@@ -18,7 +18,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v5 起使用 node24 运行时（v4 为 node20，已被 runner 弃用）。
+        uses: actions/checkout@v5
 
       - name: Resolve version from tag
         # 版本号以 Git Tag 为唯一来源（发布文档 §19），不在别处手工维护。
@@ -87,7 +88,8 @@ jobs:
           fi
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        # 必须 v6：v5 仍跑在 node20 上（仅 v6 起切到 node24）。
+        uses: actions/upload-artifact@v6
         with:
           name: MouseSwitcher-macos-universal-${{ steps.version.outputs.version }}
           path: |

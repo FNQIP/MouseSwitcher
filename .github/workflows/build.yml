@@ -18,7 +18,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v5 起使用 node24 运行时（v4 为 node20，已被 runner 弃用）。
+        uses: actions/checkout@v5
 
       - name: Show environment
         run: |
@@ -55,7 +56,8 @@ jobs:
 
       - name: Upload artifact
         # 发布文档 §14：普通 push 的产物放在 Artifacts 里下载。
-        uses: actions/upload-artifact@v4
+        # 必须 v6：v5 仍跑在 node20 上（仅 v6 起切到 node24）。
+        uses: actions/upload-artifact@v6
         with:
           name: MouseSwitcher-macos-universal
           path: dist/MouseSwitcher-macos-*.zip
