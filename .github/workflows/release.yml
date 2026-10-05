@@ -1,0 +1,97 @@
+name: Release
+
+# 正式版本只通过 Git Tag 发布（发布文档 §15）：
+#   git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - 'v*'
+
+# 只在创建 Release 时需要写权限（发布文档 §26）。
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        # 版本号以 Git Tag 为唯一来源（发布文档 §19），不在别处手工维护。
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "版本：$VERSION"
+
+      - name: Show environment
+        run: |
+          sw_vers
+          swift --version
+
+      - name: Run tests
+        run: |
+          if [ -d Tests ]; then
+            swift test --disable-sandbox
+          else
+            echo "⚠️  没有测试目标，跳过 swift test"
+          fi
+
+      - name: Build universal app bundle
+        run: ./scripts/build-app.sh --version "${{ steps.version.outputs.version }}"
+
+      - name: Verify app bundle
+        # 发布文档 §21：校验不过就整条 workflow 失败，绝不发布损坏的产物。
+        run: |
+          set -euo pipefail
+          test -d build/MouseSwitcher.app
+          test -f build/MouseSwitcher.app/Contents/MacOS/MouseSwitcher
+          file build/MouseSwitcher.app/Contents/MacOS/MouseSwitcher | grep -q arm64
+          file build/MouseSwitcher.app/Contents/MacOS/MouseSwitcher | grep -q x86_64
+          test "$(plutil -extract CFBundleShortVersionString raw build/MouseSwitcher.app/Contents/Info.plist)" = "${{ steps.version.outputs.version }}"
+          echo "✅ 校验通过"
+
+      - name: Package
+        # DMG 是额外产物，脚本内部保证它失败也不会影响 ZIP（发布文档 §35）。
+        run: ./scripts/package-app.sh --dmg --version "${{ steps.version.outputs.version }}"
+
+      - name: Generate SHA256SUMS and release notes
+        run: ./scripts/create-release.sh "${{ steps.version.outputs.version }}"
+
+      - name: Create GitHub Release
+        # 用官方 gh CLI（macOS Runner 自带），不引入第三方 Action。
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG 已存在，只上传产物"
+            gh release upload "$TAG" dist/MouseSwitcher-macos-*.zip dist/SHA256SUMS --clobber
+            [ -f dist/MouseSwitcher-macos-universal.dmg ] \
+              && gh release upload "$TAG" dist/MouseSwitcher-macos-universal.dmg --clobber \
+              || echo "无 DMG，跳过"
+          else
+            gh release create "$TAG" \
+              --title "MouseSwitcher v${{ steps.version.outputs.version }}" \
+              --notes-file dist/RELEASE_NOTES.md \
+              dist/MouseSwitcher-macos-*.zip \
+              dist/SHA256SUMS
+            [ -f dist/MouseSwitcher-macos-universal.dmg ] \
+              && gh release upload "$TAG" dist/MouseSwitcher-macos-universal.dmg \
+              || echo "无 DMG，跳过"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MouseSwitcher-macos-universal-${{ steps.version.outputs.version }}
+          path: |
+            dist/MouseSwitcher-macos-*.zip
+            dist/MouseSwitcher-macos-*.dmg
+            dist/SHA256SUMS
+          if-no-files-found: error

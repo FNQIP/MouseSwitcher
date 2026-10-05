@@ -1,0 +1,62 @@
+name: Build
+
+# 普通 push 与 Pull Request 都构建，但都不创建正式 Release（发布文档 §4 / §5）。
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# 最小权限：普通构建只需要读（发布文档 §26）。
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build MouseSwitcher
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show environment
+        run: |
+          sw_vers
+          swift --version
+          xcrun --show-sdk-path
+
+      - name: Run tests
+        # 项目目前没有单独的测试目标，有_tests 目录时才执行（发布文档 §22）。
+        run: |
+          if [ -d Tests ]; then
+            swift test --disable-sandbox
+          else
+            echo "⚠️  没有测试目标，跳过 swift test"
+          fi
+
+      - name: Build universal app bundle
+        run: ./scripts/build-app.sh
+
+      - name: Verify app bundle
+        # 发布文档 §21：任何一项不通过都必须让 workflow 失败。
+        run: |
+          set -euo pipefail
+          test -d build/MouseSwitcher.app
+          test -f build/MouseSwitcher.app/Contents/MacOS/MouseSwitcher
+          file build/MouseSwitcher.app/Contents/MacOS/MouseSwitcher
+          file build/MouseSwitcher.app/Contents/MacOS/MouseSwitcher | grep -q arm64
+          file build/MouseSwitcher.app/Contents/MacOS/MouseSwitcher | grep -q x86_64
+          test "$(plutil -extract LSUIElement raw build/MouseSwitcher.app/Contents/Info.plist)" = "true"
+          echo "✅ 校验通过：Universal Binary + LSUIElement=true"
+
+      - name: Package
+        run: ./scripts/package-app.sh
+
+      - name: Upload artifact
+        # 发布文档 §14：普通 push 的产物放在 Artifacts 里下载。
+        uses: actions/upload-artifact@v4
+        with:
+          name: MouseSwitcher-macos-universal
+          path: dist/MouseSwitcher-macos-*.zip
+          if-no-files-found: error
