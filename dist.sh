@@ -116,28 +116,40 @@ cat > "$PKG_DIR/卸载 MouseSwitcher.command" <<'SCRIPT'
 #!/bin/bash
 cd "$(dirname "$0")"
 
-echo "==> 退出 MouseSwitcher…"
-pkill -f "MouseSwitcher.app/Contents/MacOS/MouseSwitcher" 2>/dev/null || true
+APP_NAME="MouseSwitcher"
+BUNDLE_ID="com.local.MouseSwitcher"
+
+echo "==> 退出 ${APP_NAME}…"
+pkill -f "${APP_NAME}.app/Contents/MacOS/${APP_NAME}" 2>/dev/null || true
 sleep 1
 
+# 登录项必须在 App 还存在时取消，否则系统设置里会留一条灰色失效条目。
 echo "==> 取消开机启动（如已开启）"
-defaults read com.local.MouseSwitcher >/dev/null 2>&1 && \
-    osascript -e 'tell application "System Events" to delete login item "MouseSwitcher"' 2>/dev/null || true
+for app in "/Applications/${APP_NAME}.app" "$HOME/Applications/${APP_NAME}.app"; do
+    bin="$app/Contents/MacOS/${APP_NAME}"
+    [[ -x "$bin" ]] || continue
+    # 旧版二进制不认识这个参数，会当成正常启动，先探测再调用
+    strings "$bin" 2>/dev/null | grep -q -- "--unregister-login" || continue
+    "$bin" --unregister-login >/dev/null 2>&1 && echo "    ✓ 已移除登录项" && break
+done
 
 for dir in "/Applications" "$HOME/Applications"; do
-    if [[ -d "$dir/MouseSwitcher.app" ]]; then
-        echo "==> 删除 $dir/MouseSwitcher.app"
-        rm -rf "$dir/MouseSwitcher.app"
+    if [[ -d "$dir/${APP_NAME}.app" ]]; then
+        echo "==> 删除 $dir/${APP_NAME}.app"
+        rm -rf "$dir/${APP_NAME}.app" 2>/dev/null || echo "    ⚠️  删除失败（权限不足），请手动拖到废纸篓"
     fi
 done
 
 echo "==> 清除偏好设置"
-defaults delete com.local.MouseSwitcher 2>/dev/null || true
+defaults delete ${BUNDLE_ID} 2>/dev/null || true
+
+echo "==> 清除辅助功能授权记录"
+tccutil reset Accessibility ${BUNDLE_ID} 2>/dev/null || true
 
 echo ""
 echo "✅ 已卸载。"
-echo "   辅助功能列表里的条目需要手动移除："
-echo "   系统设置 → 隐私与安全性 → 辅助功能 → 选中 MouseSwitcher → 点减号"
+echo "   系统设置 → 隐私与安全性 → 辅助功能 里的条目如仍在，"
+echo "   选中 ${APP_NAME} 点减号 — 移除即可（重开系统设置会刷新）。"
 echo ""
 read -r -p "按回车键关闭…"
 SCRIPT
@@ -206,8 +218,18 @@ cat > "$PKG_DIR/使用说明.md" <<'DOC'
 
 ## 四、卸载
 
-双击 **「卸载 MouseSwitcher.command」**，再到
-系统设置 → 隐私与安全性 → 辅助功能 里手动移除条目即可。
+**方式一（最省事）**：点菜单栏图标 → **「卸载 MouseSwitcher…」** → 确认。
+会自动取消开机启动、把 App 移进废纸篓、清掉偏好设置，并打开系统设置的
+辅助功能页面供你移除授权条目。
+
+**方式二**：双击 **「卸载 MouseSwitcher.command」**，效果相同（走命令行）。
+
+**方式三**：直接把 `/Applications/MouseSwitcher.app` 拖到废纸篓。
+⚠️ 这样**只删得掉 App 本体**，会残留开机启动项和偏好设置；
+建议改用上面两种方式。
+
+无论哪种方式，**辅助功能授权条目**都需要手动移除：
+系统设置 → 隐私与安全性 → 辅助功能 → 选中 MouseSwitcher → 点减号 —。
 
 ---
 

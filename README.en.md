@@ -112,11 +112,37 @@ icon shows a ⚠️ next to it.
 | Click the menu bar icon | Open the menu |
 
 From the menu you can pick a display to move to, toggle wrapping, toggle
-preserving relative position, toggle launch at login, open System Settings, and quit.
+preserving relative position, toggle launch at login, open System Settings,
+**uninstall**, and quit.
 
 **About wrapping:** the direction only sets the traversal order. Holding either
 key cycles through every display; there is no dead end. With three or more
 displays the middle ones still follow spatial neighbours — only the ends wrap.
+
+---
+
+## Uninstalling
+
+**Option 1 — from the menu (recommended):** click the menu bar icon →
+**"Uninstall MouseSwitcher…"** → confirm. It unregisters the login item, moves
+the app to the **Trash**, clears its preferences, and opens the Accessibility
+pane so you can remove the entry.
+
+**Option 2 — script:**
+
+```bash
+./uninstall.sh
+```
+
+Same steps (the app is deleted outright instead of trashed), plus a `tccutil`
+reset of the Accessibility entry.
+
+**Option 3 — drag to the Trash:** removes the app itself, but **leaves behind**
+the login item and preferences. Use one of the options above for a clean removal.
+
+Either way, the **Accessibility entry** must be removed by hand — third-party
+code cannot touch the TCC database: System Settings → Privacy & Security →
+Accessibility → select MouseSwitcher → click **–**.
 
 ---
 
@@ -147,7 +173,7 @@ For personal use you can build your native architecture only, which is faster:
 | `scripts/create-release.sh` | Generate `SHA256SUMS` and release notes |
 | `install.sh` | Install to `/Applications` (falls back to `~/Applications`) |
 | `run-app.sh` | Build and launch |
-| `uninstall.sh` | Uninstall and clear preferences |
+| `uninstall.sh` | Uninstall: drop the login item, remove the app (both locations), clear preferences and the Accessibility entry |
 | `dist.sh` | Build a distributable bundle with an installer and instructions |
 
 ---

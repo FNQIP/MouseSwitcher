@@ -103,10 +103,57 @@ shasum -a 256 -c SHA256SUMS
 | 点击菜单栏图标 | 打开菜单 |
 
 菜单里可以：手动选择要移到哪台显示器、开关循环切换、
-开关「保持相对位置」、开关开机启动、打开系统设置、退出。
+开关「保持相对位置」、开关开机启动、打开系统设置、卸载、退出。
 
 **循环说明**：方向只决定遍历顺序。任意方向连续按都能遍历到所有显示器，
 到最右 / 最左时自动绕回，不会卡住。三屏以上时中间仍按空间邻居跳转，只在两端绕回。
+
+---
+
+## 卸载
+
+### 方式一：菜单栏里点一下（推荐）
+
+点菜单栏图标 → **「卸载 MouseSwitcher…」** → 确认。会自动：
+
+1. 取消开机启动（SMAppService 登录项，必须在 App 还在时取消）
+2. 把 `MouseSwitcher.app` 移进**废纸篓**（还能反悔）
+3. 删除 `com.local.MouseSwitcher` 的偏好设置
+4. 打开系统设置 → 隐私与安全性 → 辅助功能，供你移除授权条目
+
+### 方式二：脚本
+
+```bash
+./uninstall.sh
+```
+
+做的事和方式一相同（区别是 App 直接删除而非进废纸篓），并额外用
+`tccutil` 清除辅助功能授权记录。
+
+### 方式三：拖到废纸篓
+
+访达里把 `MouseSwitcher.app` 拖到废纸篓，能删掉 App 本体，但**会残留**
+开机启动项和偏好设置。想彻底清干净请用上面两种方式，或拖完再跑一次
+`./uninstall.sh` 补清理。
+
+### 无论如何都要手动的一步
+
+**辅助功能授权**（系统 TCC 数据库）第三方无权修改，只能手动移除：
+系统设置 → 隐私与安全性 → 辅助功能 → 选中 MouseSwitcher → 点减号 —。
+该列表有时要重新打开系统设置才刷新。
+
+卸载后建议在**系统设置 → 隐私与安全性 → 辅助功能**里确认该条目已消失
+（该列表有时要等系统设置重新打开才刷新），登录项同理。
+
+验证是否卸干净：
+
+```bash
+mdfind "kMDItemCFBundleIdentifier == 'com.local.MouseSwitcher'"   # 应无输出
+pgrep -fl MouseSwitcher                                            # 应无输出
+```
+
+> 旧版本（2026-10-06 之前）的 `uninstall.sh` 只删 `~/Applications`，
+> 而 `install.sh` 默认装的是 `/Applications`，会漏掉。现在两处都覆盖。
 
 ---
 
@@ -137,7 +184,7 @@ open build/MouseSwitcher.app
 | `scripts/create-release.sh` | 生成 `SHA256SUMS` 与 Release Notes |
 | `install.sh` | 安装到 `/Applications`（不可写时退回 `~/Applications`） |
 | `run-app.sh` | 构建并启动 |
-| `uninstall.sh` | 卸载并清理偏好设置 |
+| `uninstall.sh` | 卸载：清登录项、删 App（两处）、清偏好设置与辅助功能授权 |
 | `dist.sh` | 生成带安装器和使用说明的分发包 |
 
 ---

@@ -262,6 +262,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
+        let uninstall = NSMenuItem(
+            title: "卸载 MouseSwitcher…",
+            action: #selector(uninstallApp),
+            keyEquivalent: ""
+        )
+        uninstall.target = self
+        menu.addItem(uninstall)
+
         let quit = NSMenuItem(
             title: "退出 MouseSwitcher",
             action: #selector(NSApplication.terminate(_:)),
@@ -327,6 +335,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         Log.info("手动重新检测，Display count: \(displays.count)")
         rebuildMenu()
         refreshStatusItem()
+    }
+
+    @objc private func uninstallApp() {
+        Uninstaller.runFromMenu()
     }
 
     @objc private func openAccessibilitySettings() {
